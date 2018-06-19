@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   image_transport
   cv_bridge
+  linemod_msgs
 )
 
 set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
@@ -25,5 +26,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(linemod_2d src/linemod_2d.cpp)
-target_link_libraries(linemod_2d ${catkin_LIBRARIES})
+add_executable(linemod_sample src/linemod_sample.cpp)
+target_link_libraries(linemod_sample ${catkin_LIBRARIES})
+
+add_executable(linemod_no_depth src/linemod_no_depth.cpp)
+target_link_libraries(linemod_no_depth ${catkin_LIBRARIES})
+
