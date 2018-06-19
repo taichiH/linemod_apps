@@ -17,7 +17,7 @@
 #include <geometry_msgs/Pose2D.h>
 #include <linemod_msgs/Scored2DBoxArray.h>
 #include <linemod_msgs/Scored2DBox.h>
-
+#include <std_msgs/Header.h>
 
 cv::Ptr<cv::linemod::Detector> detector;
 std::string filename;
@@ -29,13 +29,14 @@ bool debug_view;
 ros::Publisher box_pub_;
 linemod_msgs::Scored2DBoxArray box_array_;
 
-bool recognizeHighestMatch(int match_num, cv::Mat &recog_img);
+bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &header);
 void drawResponse(const std::vector<cv::linemod::Template>& templates,
                   cv::Mat& dst, cv::Point offset, int T);
 static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename);
 bool splitClassId(std::string &name, std::string &result);
 
 void callback(const sensor_msgs::ImageConstPtr &rgb_image){
+  std_msgs::Header header = rgb_image->header;
   cv_bridge::CvImagePtr cv_rgb;
   try {
     cv_rgb = cv_bridge::toCvCopy(rgb_image, sensor_msgs::image_encodings::BGR8);
@@ -44,10 +45,10 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image){
     return;
   }
   cv::Mat color = cv_rgb->image;
-  recognizeHighestMatch(match_num, color);
+  recognizeHighestMatch(match_num, color, header);
 }
 
-bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
+bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &header){
   printf("-------------------------------\n");
   cv::Mat image = recog_img.clone();
   cv::Mat display = recog_img.clone();
@@ -101,6 +102,7 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
   }
 
   linemod_msgs::Scored2DBoxArray boxes_msg;
+  boxes_msg.header = header;
   boxes_msg.boxes = boxes;
   box_pub_.publish(boxes_msg);
 }
