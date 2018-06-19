@@ -9,7 +9,6 @@
 #include <iostream>
 #include <string>
 
-// ros
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -19,10 +18,6 @@
 
 #define IMAGE_WIDTH 640
 #define IMAGE_HEIGHT 480
-
-// linemod has been moved to opencv_contrib
-// http://code.opencv.org/projects/opencv/repository/revisions/1ad9827fc4ede1b9c42515569fcc5d8d1106a4ea
-#if CV_MAJOR_VERSION < 3
 
 // Function prototypes
 std::string updatePartsName(cv::linemod::Match m);
@@ -117,7 +112,6 @@ private:
   int64 start_, time_;
 };
 
-// Functions to store detector and templates in single XML/YAML file
 static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename)
 {
   cv::Ptr<cv::linemod::Detector> detector = new cv::linemod::Detector;
@@ -147,7 +141,6 @@ static void writeLinemod(const cv::Ptr<cv::linemod::Detector>& detector, const s
   fs << "]"; // classes
 }
 
-// global
 cv::Ptr<cv::linemod::Detector> detector;
 std::string filename;
 int num_classes = 0;
@@ -161,16 +154,12 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
   bool show_match_result = true;
   bool show_timings = false;
   bool learn_online = false;  
-  //hogehoge
   obj_pose_.x = 0.0;
   obj_pose_.y = 0.0; 
   obj_pose_.theta = 0.0;
-  /// @todo Keys for changing these?
   cv::Size roi_size(450, 300);
-  // cv::Size roi_size(350,350);
   int learning_lower_bound = 90;
   int learning_upper_bound = 95;
-  // Timers
   Timer extract_timer;
   Timer match_timer;
   int num_modalities = (int)detector->getModalities().size();
@@ -187,19 +176,12 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
   std::vector<cv::Mat> sources;
   sources.push_back(color);
   cv::Mat display = color.clone();
-  cv::Mat hogehoge = color.clone();
-  cv::rectangle(hogehoge, cv::Point(0,0), cv::Point(color.cols,Mouse::y()-roi_size.height/2), cv::Scalar(0,0,0), -1, CV_AA);
-  cv::rectangle(hogehoge, cv::Point(0,Mouse::y()+roi_size.height/2), cv::Point(color.cols,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
-  cv::rectangle(hogehoge, cv::Point(0,0), cv::Point(Mouse::x()-roi_size.width/2,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
-  cv::rectangle(hogehoge, cv::Point(Mouse::x()+roi_size.width/2,0), cv::Point(color.cols,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
-  cv::imshow("hogehoge", hogehoge);
 
   if (!learn_online)
   {
     cv::Point mouse(Mouse::x(), Mouse::y());
     int event = Mouse::event();
 
-    // Compute ROI centered on current mouse location
     cv::Point roi_offset(roi_size.width / 2, roi_size.height / 2);
     cv::Point pt1 = mouse - roi_offset; // top left
     cv::Point pt2 = mouse + roi_offset; // bottom right
@@ -366,12 +348,10 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
   }
 }
 
-#endif
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "linemod");
   ROS_ERROR("linemod has been moved to opencv_contrib in OpenCV3");
-#if CV_MAJOR_VERSION < 3
   // Various settings and flags
   help();
   cv::namedWindow("color");
@@ -408,12 +388,9 @@ int main(int argc, char** argv)
   img_sub_ = nh.subscribe("/stereo/left/image_rect_color",1, callback);
   obj_pose_pub_ = nh.advertise<geometry_msgs::Pose2D>("obj_pose", 1);
 
-#endif
   ros::spin();
   return 0;
 }
-
-#if CV_MAJOR_VERSION < 3
 
 std::string updatePartsName(cv::linemod::Match m){
   std::string parts_name = m.class_id.c_str();
@@ -477,4 +454,3 @@ void drawResponse(const std::vector<cv::linemod::Template>& templates,
     }
   }
 }
-#endif
