@@ -24,6 +24,7 @@ std::string filename;
 int num_classes = 0;
 int threshold;
 int match_num;
+bool debug_view;
 
 ros::Publisher box_pub_;
 linemod_msgs::Scored2DBoxArray box_array_;
@@ -32,6 +33,7 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img);
 void drawResponse(const std::vector<cv::linemod::Template>& templates,
                   cv::Mat& dst, cv::Point offset, int T);
 static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename);
+bool splitClassId(std::string &name, std::string &result);
 
 void callback(const sensor_msgs::ImageConstPtr &rgb_image){
   cv_bridge::CvImagePtr cv_rgb;
@@ -46,6 +48,7 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image){
 }
 
 bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
+  printf("-------------------------------\n");
   cv::Mat image = recog_img.clone();
   cv::Mat display = recog_img.clone();
 
@@ -67,12 +70,21 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
     cv::linemod::Match m = matches[0];
     const std::vector<cv::linemod::Template>& templates = detector->getTemplates(m.class_id, m.template_id);
     
+    std::string name = m.class_id.c_str();
+    std::string result;
+    splitClassId(name, result);
+
+    printf("Similarity:%5.1f%%; x:%3d; y:%3d; %s\n",
+	   m.similarity, m.x + templates[0].width, m.y + templates[0].height, result.c_str());
+
     drawResponse(templates, display, cv::Point(m.x, m.y), detector->getT(0));
 
+    box.label = result;
     box.width = templates[0].width;
     box.height = templates[0].height;
     box.x = m.x;
     box.y = m.y;
+    box.score = m.similarity;
     boxes.push_back(box);
     cv::Point offset(30, 30);
 
@@ -83,8 +95,10 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
                   cv::Scalar(0,0,0), -1, CV_AA);
   }
 
-  cv::imshow("display", display);
-  cv::waitKey(2);
+  if(debug_view){
+    cv::imshow("display", display);
+    cv::waitKey(2);
+  }
 
   linemod_msgs::Scored2DBoxArray boxes_msg;
   boxes_msg.boxes = boxes;
@@ -118,6 +132,23 @@ void drawResponse(const std::vector<cv::linemod::Template>& templates,
 	     5, color[1], -1);
 }
 
+bool splitClassId(std::string &name, std::string &result){
+  char split = ',';
+  auto first = name.begin();
+  while(first != name.end()){
+    auto last = first;
+    while( last != name.end() && *last != split)
+      ++last;
+    result = std::string(name.begin(), first);
+    if (last != name.end())
+      ++last;
+    first = last;
+  }
+  result.pop_back();
+  return true;
+}
+
+
 int main(int argc, char** argv){
   ros::init(argc, argv, "linemod_no_depth");
   ros::NodeHandle nh("~");
@@ -126,6 +157,7 @@ int main(int argc, char** argv){
   nh.getParam("template_name", template_name);
   nh.getParam("threshold", threshold);
   nh.getParam("match_num", match_num);
+  nh.getParam("debug_view", debug_view);
 
   detector = readLinemod(template_name);
   std::vector<std::string> ids = detector->classIds();
