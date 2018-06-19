@@ -1,11 +1,11 @@
 <launch>
-  <arg name="template" default="template.yml" />
-  <arg name="rgb_image" default="/stereo/left/image_recot_color" />
-
-  <node name="linemod_no_depth" pkg="linemod_recognition"
-	type="linemod_recognition">
-    <remap from="rgb_image" to="$(arg rgb_image)" />
-    <remap from="depth_image" to="$(arg depth_image)" />
-    <remap from="box_out" to="/linemod/nondepth2d/output" />
+  <arg name="input" default="/stereo/left/image_rect_color" />
+  <node name="linemod_no_depth" 
+	pkg="linemod_recognition" type="linemod_no_depth" 
+	output="screen" >
+    <rosparam subst_value="true">
+      template_name: $(find linemod_recognition)/templates/pie4.yml
+    </rosparam>
+    <remap from="~input" to="$(arg input)" />
   </node>
 </launch>
