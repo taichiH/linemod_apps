@@ -5,6 +5,8 @@
 	output="screen" >
     <rosparam subst_value="true">
       template_name: $(find linemod_recognition)/templates/pie4.yml
+      threshold: 80
+      match_num: 5
     </rosparam>
     <remap from="~input" to="$(arg input)" />
   </node>

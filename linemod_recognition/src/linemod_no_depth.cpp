@@ -18,29 +18,20 @@
 #include <linemod_msgs/Scored2DBoxArray.h>
 #include <linemod_msgs/Scored2DBox.h>
 
-static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename){
-  cv::Ptr<cv::linemod::Detector> detector = new cv::linemod::Detector;
-  cv::FileStorage fs(filename, cv::FileStorage::READ);
-  detector->read(fs.root());
-
-  cv::FileNode fn = fs["classes"];
-  for (cv::FileNodeIterator i = fn.begin(), iend = fn.end(); i != iend; ++i)
-    detector->readClass(*i);
-
-  return detector;
-}
 
 cv::Ptr<cv::linemod::Detector> detector;
 std::string filename;
 int num_classes = 0;
-int matching_threshold = 80;
+int threshold;
+int match_num;
+
 ros::Publisher box_pub_;
 linemod_msgs::Scored2DBoxArray box_array_;
-int match_num = 5;
 
 bool recognizeHighestMatch(int match_num, cv::Mat &recog_img);
 void drawResponse(const std::vector<cv::linemod::Template>& templates,
                   cv::Mat& dst, cv::Point offset, int T);
+static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename);
 
 void callback(const sensor_msgs::ImageConstPtr &rgb_image){
   cv_bridge::CvImagePtr cv_rgb;
@@ -67,7 +58,7 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
     std::vector<cv::Mat> quantized_images;
     linemod_msgs::Scored2DBox box;
 
-    detector->match(sources, (float)matching_threshold,
+    detector->match(sources, (float)threshold,
                     matches,class_ids, quantized_images);
 
     if (matches.size() <= 0)
@@ -91,11 +82,25 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img){
 			    m.y + templates[0].height - offset.y),
                   cv::Scalar(0,0,0), -1, CV_AA);
   }
+
   cv::imshow("display", display);
   cv::waitKey(2);
+
   linemod_msgs::Scored2DBoxArray boxes_msg;
   boxes_msg.boxes = boxes;
   box_pub_.publish(boxes_msg);
+}
+
+static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename){
+  cv::Ptr<cv::linemod::Detector> detector = new cv::linemod::Detector;
+  cv::FileStorage fs(filename, cv::FileStorage::READ);
+  detector->read(fs.root());
+
+  cv::FileNode fn = fs["classes"];
+  for (cv::FileNodeIterator i = fn.begin(), iend = fn.end(); i != iend; ++i)
+    detector->readClass(*i);
+
+  return detector;
 }
 
 void drawResponse(const std::vector<cv::linemod::Template>& templates,
@@ -116,11 +121,13 @@ void drawResponse(const std::vector<cv::linemod::Template>& templates,
 int main(int argc, char** argv){
   ros::init(argc, argv, "linemod_no_depth");
   ros::NodeHandle nh("~");
+
   std::string template_name;
   nh.getParam("template_name", template_name);
-  std::cout << template_name << std::endl;
-  detector = readLinemod(template_name);
+  nh.getParam("threshold", threshold);
+  nh.getParam("match_num", match_num);
 
+  detector = readLinemod(template_name);
   std::vector<std::string> ids = detector->classIds();
   num_classes = detector->numClasses();
   printf("Loaded %s with %d classes and %d templates\n",
