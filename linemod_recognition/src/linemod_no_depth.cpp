@@ -27,6 +27,7 @@ int match_num;
 bool debug_view;
 
 ros::Publisher box_pub_;
+ros::Publisher img_pub_;
 linemod_msgs::Scored2DBoxArray box_array_;
 
 bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &header);
@@ -49,7 +50,6 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image){
 }
 
 bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &header){
-  printf("-------------------------------\n");
   cv::Mat image = recog_img.clone();
   cv::Mat display = recog_img.clone();
 
@@ -74,9 +74,6 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &
     std::string name = m.class_id.c_str();
     std::string result;
     splitClassId(name, result);
-
-    printf("Similarity:%5.1f%%; x:%3d; y:%3d; %s\n",
-	   m.similarity, m.x + templates[0].width, m.y + templates[0].height, result.c_str());
 
     drawResponse(templates, display, cv::Point(m.x, m.y), detector->getT(0));
 
@@ -105,6 +102,8 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &
   boxes_msg.header = header;
   boxes_msg.boxes = boxes;
   box_pub_.publish(boxes_msg);
+
+  img_pub_.publish(cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, display).toImageMsg());
 }
 
 static cv::Ptr<cv::linemod::Detector> readLinemod(const std::string& filename){
@@ -174,7 +173,7 @@ int main(int argc, char** argv){
   ros::Subscriber img_sub_;
   img_sub_ = nh.subscribe("input",1 , callback);
   box_pub_ = nh.advertise<linemod_msgs::Scored2DBoxArray>("box_out", 1);
-
+  img_pub_ = nh.advertise<sensor_msgs::Image>("output_image", 1);
   ros::spin();
   return 0;
 }
