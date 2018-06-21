@@ -1,6 +1,6 @@
 <launch>
   <arg name="input" default="/stereo/left/image_rect_color" />
-  <arg name="debug" default="true" />
+  <arg name="debug" default="false" />
   <arg name="threshold" default="80" /> 
   <arg name="match_num" default="5" />
 
