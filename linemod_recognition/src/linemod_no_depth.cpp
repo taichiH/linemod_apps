@@ -19,8 +19,9 @@
 #include <linemod_msgs/Scored2DBox.h>
 #include <std_msgs/Header.h>
 
-cv::Ptr<cv::linemod::Detector> detector;
+std::vector<cv::Ptr<cv::linemod::Detector>> detector_vec;
 std::string filename;
+int template_num = 3;
 int num_classes = 0;
 int threshold;
 int match_num;
@@ -54,43 +55,47 @@ bool recognizeHighestMatch(int match_num, cv::Mat &recog_img, std_msgs::Header &
   cv::Mat display = recog_img.clone();
 
   std::vector<linemod_msgs::Scored2DBox> boxes;
-  for(int i=0; i<match_num; i++){
-    std::vector<cv::Mat> sources;
-    sources.push_back(image);
-    std::vector<cv::linemod::Match> matches;
-    std::vector<std::string> class_ids;
-    std::vector<cv::Mat> quantized_images;
-    linemod_msgs::Scored2DBox box;
+  for(int i=0; i<template_num; i++){
+    image = recog_img.clone();
+    for(int j=0; j<match_num; i++){
+      std::vector<cv::Mat> sources;
+      sources.push_back(image);
+      std::vector<cv::linemod::Match> matches;
+      std::vector<std::string> class_ids;
+      std::vector<cv::Mat> quantized_images;
+      linemod_msgs::Scored2DBox box;
 
-    detector->match(sources, (float)threshold,
-                    matches,class_ids, quantized_images);
+      detector_vec.at(i)->match(sources, (float)threshold,
+                      matches,class_ids, quantized_images);
 
-    if (matches.size() <= 0)
-      continue;
+      if (matches.size() <= 0)
+        continue;
 
-    cv::linemod::Match m = matches[0];
-    const std::vector<cv::linemod::Template>& templates = detector->getTemplates(m.class_id, m.template_id);
+      cv::linemod::Match m = matches[0];
+      const std::vector<cv::linemod::Template>& templates = detector_vec.at(i)->getTemplates(m.class_id, m.template_id);
     
-    std::string name = m.class_id.c_str();
-    std::string result;
-    splitClassId(name, result);
+      std::string name = m.class_id.c_str();
+      std::string result;
+      splitClassId(name, result);
 
-    drawResponse(templates, display, cv::Point(m.x, m.y), detector->getT(0));
+      drawResponse(templates, display, cv::Point(m.x, m.y), detector_vec.at(i)->getT(0));
 
-    box.label = result;
-    box.width = templates[0].width;
-    box.height = templates[0].height;
-    box.x = m.x;
-    box.y = m.y;
-    box.score = m.similarity;
-    boxes.push_back(box);
-    cv::Point offset(30, 30);
+      box.label = result;
+      box.width = templates[0].width;
+      box.height = templates[0].height;
+      box.x = m.x;
+      box.y = m.y;
+      box.score = m.similarity;
+      boxes.push_back(box);
+      cv::Point offset(30, 30);
 
-    cv::rectangle(image,
-                  cv::Point(m.x + offset.x, m.y + offset.y),
-                  cv::Point(m.x + templates[0].width - offset.x, 
-			    m.y + templates[0].height - offset.y),
-                  cv::Scalar(0,0,0), -1, CV_AA);
+      cv::rectangle(image,
+                    cv::Point(m.x + offset.x, m.y + offset.y),
+                    cv::Point(m.x + templates[0].width - offset.x, 
+                              m.y + templates[0].height - offset.y),
+                    cv::Scalar(0,0,0), -1, CV_AA);
+
+    }
   }
 
   if(debug_view){
@@ -154,21 +159,29 @@ int main(int argc, char** argv){
   ros::init(argc, argv, "linemod_no_depth");
   ros::NodeHandle nh("~");
 
+  std::vector<std::string> template_vec(template_num);
   std::string template_name;
+  nh.getParam("pie", template_vec.at(0));
+  nh.getParam("juice", template_vec.at(1));
+  nh.getParam("caffelate", template_vec.at(2));
   nh.getParam("template_name", template_name);
   nh.getParam("threshold", threshold);
   nh.getParam("match_num", match_num);
   nh.getParam("debug_view", debug_view);
 
-  detector = readLinemod(template_name);
-  std::vector<std::string> ids = detector->classIds();
-  num_classes = detector->numClasses();
-  printf("Loaded %s with %d classes and %d templates\n",
-	 argv[1], num_classes, detector->numTemplates());
-  if (!ids.empty()) {
-    printf("Class ids:\n");
-    std::copy(ids.begin(), ids.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
+  for(int i=0; i<template_vec.size(); i++){
+    cv::Ptr<cv::linemod::Detector> detector = readLinemod(template_vec.at(i));
+    detector_vec.push_back(detector);
+    std::vector<std::string> ids = detector_vec.at(i)->classIds();
+    num_classes = detector_vec.at(i)->numClasses();
+    printf("Loaded %s with %d classes and %d templates\n",
+           argv[1], num_classes, detector_vec.at(i)->numTemplates());
+    if (!ids.empty()) {
+      printf("Class ids:\n");
+      std::copy(ids.begin(), ids.end(), std::ostream_iterator<std::string>(std::cout, "\n"));
+    }
   }
+  std::cerr << "detector_vec.size(): " << detector_vec.size() << std::endl;
 
   ros::Subscriber img_sub_;
   img_sub_ = nh.subscribe("input",1 , callback);
