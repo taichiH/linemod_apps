@@ -76,15 +76,22 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image){
   std::string class_id;
   int template_id;
 
+  cv::rectangle(display,
+		cv::Point(l_top_x, l_top_y),
+		cv::Point(r_buttom_x,
+			  r_buttom_y),
+		CV_RGB(0, 0, 255), 3);
+
+
   if(create_template){
     cv::Mat mask;
     cv::Mat gray = color.clone();
     cv::cvtColor(color, gray , CV_BGR2GRAY);
-    cv::Canny(gray, mask, 200, 400);
+    cv::Canny(gray, mask, 250, 500);
 
-    cv::rectangle(mask, cv::Point(0,0), cv::Point(color.cols,l_top_y), cv::Scalar(0,0,0), -1, CV_AA);
+    cv::rectangle(mask, cv::Point(0,0), cv::Point(color.cols, l_top_y), cv::Scalar(0,0,0), -1, CV_AA);
     cv::rectangle(mask, cv::Point(0,r_buttom_y), cv::Point(color.cols, color.rows), cv::Scalar(0,0,0), -1, CV_AA);
-    cv::rectangle(mask, cv::Point(0,0), cv::Point(l_top_x,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
+    cv::rectangle(mask, cv::Point(0,0), cv::Point(l_top_x, color.rows), cv::Scalar(0,0,0), -1, CV_AA);
     cv::rectangle(mask, cv::Point(r_buttom_x), cv::Point(color.cols,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
 
     cv::imshow("mask", mask);
@@ -147,9 +154,16 @@ int main(int argc, char** argv){
   nh.getParam("r_buttom_x", r_buttom_x);
   nh.getParam("r_buttom_y", r_buttom_y);
 
+  cv::namedWindow("mask", CV_WINDOW_NORMAL);
+  cv::resizeWindow("mask", 640, 480);
+  if(debug_view){
+    cv::namedWindow("display", CV_WINDOW_NORMAL);
+    cv::resizeWindow("display", 640, 480);
+  }
+
   ros::Subscriber img_sub_;
   img_sub_ = nh.subscribe("input",1, callback);
-  ros::ServiceServer online_linemod_server = nh.advertiseService("onelind_matching_frag", &onlineMatching);
+  ros::ServiceServer online_linemod_server = nh.advertiseService("create_frag", &onlineMatching);
   box_pub_ = nh.advertise<linemod_msgs::Scored2DBoxArray>("ategi_out", 1);
 
   ros::spin();

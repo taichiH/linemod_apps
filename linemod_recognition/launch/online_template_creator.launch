@@ -3,18 +3,22 @@
   <arg name="debug" default="false" />
   <arg name="threshold" default="70" /> 
   <arg name="match_num" default="5" />
+  <arg name="l_top_x" default="600" />
+  <arg name="l_top_y" default="350" />
+  <arg name="r_buttom_x" default="1100" />
+  <arg name="r_buttom_y" default="700" />
 
-  <node name="online_template_creator" 
-	pkg="linemod_recognition" type="online_template_creator" 
-	output="screen" >
+  <node name="online_template_creator"
+        pkg="linemod_recognition" type="online_template_creator"
+        output="screen" >
     <rosparam subst_value="true">
       threshold: $(arg threshold)
       match_num: $(arg match_num)
       debug_view: $(arg debug)
-      l_top_x: 270
-      l_top_y: 420
-      r_buttom_x: 650
-      r_buttom_y: 650
+      l_top_x: $(arg l_top_x)
+      l_top_y: $(arg l_top_y)
+      r_buttom_x: $(arg r_buttom_x)
+      r_buttom_y: $(arg r_buttom_y)
     </rosparam>
     <remap from="~input" to="$(arg input)" />
   </node>
