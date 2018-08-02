@@ -1,0 +1,41 @@
+<launch>
+  <arg name="depth_use" default="false" />
+  <arg name="canny" default="true" />
+  <arg name="otsu" default="false" />
+  <arg name="binary" default="false" />
+  <arg name="canny_val1" default="50" />
+  <arg name="canny_val2" default="100" />
+  <arg name="initial_dist" default="0.7" />
+  <arg name="scale_change" default="4381" />
+  <arg name="roi_x" default="250" />
+  <arg name="roi_y" default="250" />  
+
+  <arg name="rgb_image" default="/camera/rgb/image_raw">
+  <arg name="depth_image" default="/camera/depth/image_raw">
+  <arg name="rgb_camera_info" default="/camera/rgb/camera_info">
+  <arg name="depth_camera_info" default="/camera/depth/camera_info">
+
+  <node name="linemod"
+        pkg="linemod_3dpose_estimator"
+        type="linemod"
+        output="screen">
+    <rosparam subst_value="true">
+      depth_use : $(arg depth_use)
+      canny : $(arg canny)
+      otsu : $(arg otsu)
+      binary : $(arg binary)
+      canny_val1 : $(arg canny_val1)
+      canny_val2 : $(arg canny_val2)
+      initial_dist : $(arg initial_dist)
+      scale_change : $(arg scale_change)
+      roi_x : $(arg roi_x)
+      roi_y : $(arg roi_y)
+    </rosparam>
+
+    <remap from="~rgb_image" to="$(arg rgb_image)" />
+    <remap from="~depth_image" to="$(arg depth_image)" />
+    <remap from="~rgb_camera_info" to="$(arg rgb_camera_info)" />  
+    <remap from="~depth_camera_info" to="$(arg depth_camera_info)" />  
+
+  </node>
+</launch>

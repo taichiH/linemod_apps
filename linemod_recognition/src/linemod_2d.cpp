@@ -1,5 +1,5 @@
 #include <opencv2/core/core.hpp>
-#include <opencv2/imgproc/imgproc_c.h> // cvFindContours
+#include <opencv2/imgproc/imgproc_c.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/objdetect/objdetect.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -145,7 +145,10 @@ cv::Ptr<cv::linemod::Detector> detector;
 std::string filename;
 int num_classes = 0;
 int matching_threshold = 80;
-std::string template_path = "/home/higashide/ais-project/catkin_ws/src/devel/higashide/higa_linemod_pkg/";
+int rotation;
+int roi_x;
+int roi_y;
+std::string template_path = "./";
 ros::Publisher obj_pose_pub_;
 geometry_msgs::Pose2D obj_pose_;
 
@@ -157,7 +160,8 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
   obj_pose_.x = 0.0;
   obj_pose_.y = 0.0; 
   obj_pose_.theta = 0.0;
-  cv::Size roi_size(450, 300);
+  // cv::Size roi_size(130, 75);
+  cv::Size roi_size(roi_x, roi_y);
   int learning_lower_bound = 90;
   int learning_upper_bound = 95;
   Timer extract_timer;
@@ -199,9 +203,8 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
       cv::Mat mask;
       cv::Mat gray = color.clone();
       cv::cvtColor(color, gray , CV_BGR2GRAY);
-      cv::Canny(gray, mask, 200, 400);
-      // cv::threshold(gray, mask, 0, 255, CV_THRESH_BINARY | cv::THRESH_OTSU);
-      // cv::threshold(gray, mask, 100, 255, CV_THRESH_BINARY);
+      cv::Canny(gray, mask, 50, 100);
+
       cv::rectangle(mask, cv::Point(0,0), cv::Point(color.cols,Mouse::y()-roi_size.height/2), cv::Scalar(0,0,0), -1, CV_AA);
       cv::rectangle(mask, cv::Point(0,Mouse::y()+roi_size.height/2), cv::Point(color.cols, color.rows), cv::Scalar(0,0,0), -1, CV_AA);
       cv::rectangle(mask, cv::Point(0,0), cv::Point(Mouse::x()-roi_size.width/2,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
@@ -214,27 +217,38 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
       char parts_name[50];
       printf("input parts name -> \n");
       scanf("%s",parts_name);
-      
-      for (int i=0; i<1; i++){
-	// Extract template
+
+      printf("input tempalte name -> \n");
+      for (int i=0; i<rotation; i++){
 	int deg = i*2;
+        cv::Mat rot_image = color.clone();
+        cv::Mat rot_mask = mask.clone();
 	std::string class_id = cv::format("%s,%d", parts_name, deg);
 	cv::Rect bb;
-	extract_timer.start();
-	int template_id = detector->addTemplate(tmp_source, class_id, mask, &bb);
-	extract_timer.stop();
 
+	float angle = deg;
+	float scale = 1;
+
+	const cv::Mat affine_matrix = cv::getRotationMatrix2D(mouse, angle, scale);
+	cv::warpAffine(mask, rot_mask, affine_matrix, mask.size());
+	cv::warpAffine(tmp_color, rot_image, affine_matrix, color.size());
+	cv::imshow("rot_mask", rot_mask);
+	cv::waitKey(50);
+
+        std::vector<cv::Mat> rot_source;
+        rot_source.push_back(rot_image);
+        int template_id = detector->addTemplate(rot_source,
+                                                class_id,
+                                                rot_mask,
+                                                &bb);
 	if (template_id != -1){
 	  printf("*** Added template (id %d) for new object class %d***\n", template_id, num_classes);
 	}
-	float angle = 2;
-	float scale = 1;
-	const cv::Mat affine_matrix = cv::getRotationMatrix2D(mouse, angle, scale );
-	cv::warpAffine(mask, mask, affine_matrix, mask.size());
-	cv::warpAffine(tmp_color, tmp_color, affine_matrix, mask.size());
-	cv::imshow("mask", mask);
+
 	++num_classes;
       }
+      printf("write linemod template to %s... \n", filename.c_str());
+      writeLinemod(detector, filename);
     }
 
     // Draw ROI for display
@@ -257,15 +271,15 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
  
   for (int i = 0; (i < (int)matches.size()) && (classes_visited < num_classes); ++i)
   {
-    // cv::linemod::Match m = matches[0];
-    cv::linemod::Match m = matches[i];
+    cv::linemod::Match m = matches[0];
+    // cv::linemod::Match m = matches[i];
     const std::vector<cv::linemod::Template>& templates = detector->getTemplates(m.class_id, m.template_id);
-    // std::string parts_name = updatePartsName(m);
-    std::string parts_name = "hoge";
+    std::string parts_name = updatePartsName(m);
+    // std::string parts_name = "hoge";
     parts_name.pop_back();
-    // int deg = updateDeg(m);
-    // obj_pose_.theta = deg;
-    int deg = 0;
+    int deg = updateDeg(m);
+    obj_pose_.theta = deg;
+    // int deg = 0;
 
     if (visited.insert(m.class_id).second){
       ++classes_visited;
@@ -338,8 +352,6 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
   case 'w':
     // write model to disk
     std::cout << "input name of template file name (.yml format) ->" << std::endl;
-    std::cin >> filename;
-    filename = template_path + filename;
     writeLinemod(detector, filename);
     printf("Wrote detector and templates to %s\n", filename.c_str());
     break;
@@ -351,6 +363,14 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image)
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "linemod");
+  ros::NodeHandle nh("~");
+  nh.getParam("rotation", rotation);
+  nh.getParam("roi_x", roi_x);
+  nh.getParam("roi_y", roi_y);
+  nh.getParam("filename", filename);
+
+  std::cerr << roi_x << ", " << roi_y << std::endl;
+
   ROS_ERROR("linemod has been moved to opencv_contrib in OpenCV3");
   // Various settings and flags
   help();
@@ -358,9 +378,6 @@ int main(int argc, char** argv)
   cv::namedWindow("normals");
   Mouse::start("color");
 
-  // Initialize LINEMOD data structures
-  
-  
   if (argc == 1)
   {
     // filename = "linemod_templates.yml";
@@ -382,10 +399,9 @@ int main(int argc, char** argv)
     }
   }
 
-  // register callback
-  ros::NodeHandle nh;
+
   ros::Subscriber img_sub_;
-  img_sub_ = nh.subscribe("/stereo/left/image_rect_color",1, callback);
+  img_sub_ = nh.subscribe("input",1, callback);
   obj_pose_pub_ = nh.advertise<geometry_msgs::Pose2D>("obj_pose", 1);
 
   ros::spin();
