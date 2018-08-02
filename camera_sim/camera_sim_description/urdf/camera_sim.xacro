@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!-- Revolute-Revolute Manipulator -->
+<robot name="camera_sim" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Constants for robot dimensions -->
+  <xacro:property name="PI" value="3.1415926535897931"/>
+  <!-- Import all Gazebo-customization elements, including Gazebo colors -->
+  <xacro:include filename="$(find camera_sim_description)/urdf/camera_sim.gazebo" />
+  <!-- Import Rviz colors -->
+  <xacro:include filename="$(find camera_sim_description)/urdf/materials.xacro" />
+
+  <!-- Used for fixing robot to Gazebo 'base_link' -->
+  <!-- <link name="world"/> -->
+  <!-- <joint name="depth_camera_joint" type="floating"> -->
+    <!-- <axis xyz="1 0 0" /> -->
+    <!-- <origin xyz="0 0.03 0" rpy="0 0 0"/> -->
+    <!-- <parent link="world"/> -->
+    <!-- <child link="depth_camera_link"/> -->
+  <!-- </joint> -->
+
+  <!-- depth_Camera -->
+  <link name="camera_depth_frame">
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+	<box size="0.1 0.1 0.1"/>
+      </geometry>
+    </collision>
+    <visual>
+      <!-- <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/> -->
+      <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+      <geometry>
+	<mesh filename="package://camera_sim_description/meshes/xtion_collada.dae"/>
+	<!-- <box size="0.1 0.1 0.1 "/> -->
+      </geometry>
+      <material name="green"/>
+    </visual>
+    <inertial>
+      <mass value="1e-5" />
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+    </inertial>
+  </link>
+</robot>
