@@ -1,12 +1,28 @@
 <launch>
+  <!-- <arg name="input" default="/camera/color/image_raw" /> -->
   <arg name="input" default="/stereo/left/image_rect_color" />
   <arg name="debug" default="false" />
   <arg name="threshold" default="70" /> 
   <arg name="match_num" default="5" />
-  <arg name="l_top_x" default="600" />
-  <arg name="l_top_y" default="350" />
-  <arg name="r_buttom_x" default="1100" />
-  <arg name="r_buttom_y" default="700" />
+
+  <!-- <arg name="l_top_x" default="50" /> -->
+  <!-- <arg name="l_top_y" default="20" /> -->
+  <!-- <arg name="r_buttom_x" default="200" /> -->
+  <!-- <arg name="r_buttom_y" default="300" /> -->
+  <!-- <arg name="l_top_x2" default="450" /> -->
+  <!-- <arg name="l_top_y2" default="20" /> -->
+  <!-- <arg name="r_buttom_x2" default="640" /> -->
+  <!-- <arg name="r_buttom_y2" default="300" /> -->
+
+  <arg name="l_top_x" default="300" />
+  <arg name="l_top_y" default="250" />
+  <arg name="r_buttom_x" default="600" />
+  <arg name="r_buttom_y" default="650" />
+  <arg name="l_top_x2" default="800" />
+  <arg name="l_top_y2" default="250" />
+  <arg name="r_buttom_x2" default="1100" />
+  <arg name="r_buttom_y2" default="650" />
+
 
   <node name="online_template_creator"
         pkg="linemod_recognition" type="online_template_creator"
@@ -19,6 +35,10 @@
       l_top_y: $(arg l_top_y)
       r_buttom_x: $(arg r_buttom_x)
       r_buttom_y: $(arg r_buttom_y)
+      l_top_x2: $(arg l_top_x2)
+      l_top_y2: $(arg l_top_y2)
+      r_buttom_x2: $(arg r_buttom_x2)
+      r_buttom_y2: $(arg r_buttom_y2)
     </rosparam>
     <remap from="~input" to="$(arg input)" />
   </node>
