@@ -28,12 +28,13 @@ bool do_matching = false;
 int threshold;
 int match_num;
 bool debug_view;
-int l_top_x;
-int l_top_y;
-int r_buttom_x;
-int r_buttom_y;
+int l_top_x[2];
+int l_top_y[2];
+int r_buttom_x[2];
+int r_buttom_y[2];
 
 ros::Publisher box_pub_;
+ros::Publisher img_pub_;
 linemod_msgs::Scored2DBoxArray box_array_;
 
 void drawResponse(const std::vector<cv::linemod::Template>& templates,
@@ -76,51 +77,52 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image){
   std::string class_id;
   int template_id;
 
-  cv::rectangle(display,
-		cv::Point(l_top_x, l_top_y),
-		cv::Point(r_buttom_x,
-			  r_buttom_y),
-		CV_RGB(0, 0, 255), 3);
-
-
   if(create_template){
-    cv::Mat mask;
-    cv::Mat gray = color.clone();
-    cv::cvtColor(color, gray , CV_BGR2GRAY);
-    cv::Canny(gray, mask, 250, 500);
+    for(int i=0; i<2; i++){
+      cv::Mat mask;
+      cv::Mat gray = color.clone();
+      cv::cvtColor(color, gray , CV_BGR2GRAY);
+      cv::Canny(gray, mask, 250, 500);
 
-    cv::rectangle(mask, cv::Point(0,0), cv::Point(color.cols, l_top_y), cv::Scalar(0,0,0), -1, CV_AA);
-    cv::rectangle(mask, cv::Point(0,r_buttom_y), cv::Point(color.cols, color.rows), cv::Scalar(0,0,0), -1, CV_AA);
-    cv::rectangle(mask, cv::Point(0,0), cv::Point(l_top_x, color.rows), cv::Scalar(0,0,0), -1, CV_AA);
-    cv::rectangle(mask, cv::Point(r_buttom_x), cv::Point(color.cols,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
+      cv::rectangle(display,
+                    cv::Point(l_top_x[i], l_top_y[i]),
+                    cv::Point(r_buttom_x[i],
+                              r_buttom_y[i]),
+                    CV_RGB(0, 0, 255), 3);
 
-    cv::imshow("mask", mask);
-    cv::waitKey(10);
+      cv::rectangle(mask, cv::Point(0,0), cv::Point(color.cols, l_top_y[i]), cv::Scalar(0,0,0), -1, CV_AA);
+      cv::rectangle(mask, cv::Point(0,r_buttom_y[i]), cv::Point(color.cols, color.rows), cv::Scalar(0,0,0), -1, CV_AA);
+      cv::rectangle(mask, cv::Point(0,0), cv::Point(l_top_x[i], color.rows), cv::Scalar(0,0,0), -1, CV_AA);
+      cv::rectangle(mask, cv::Point(r_buttom_x[i]), cv::Point(color.cols,color.rows), cv::Scalar(0,0,0), -1, CV_AA);
 
-    class_id = cv::format("ategi");
-    cv::Rect bb;
-    template_id = detector->addTemplate(sources, class_id, mask, &bb);
-    create_template = false;
-    do_matching = true;
+      std::string name = "ategi" + std::to_string(i);
+      class_id = cv::format(name.c_str());
+      cv::Rect bb;
+      template_id = detector->addTemplate(sources, class_id, mask, &bb);
+      create_template = false;
+      do_matching = true;
+    }
   }
 
   if(do_matching){
-    std::vector<cv::linemod::Match> matches;
-    std::vector<std::string> class_ids;
-    std::vector<cv::Mat> dummy;
-    detector->match(sources, (float)threshold, matches, class_ids, dummy);
+    cv::Mat image = color.clone();
+    std::vector<linemod_msgs::Scored2DBox> boxes;
+    for(int i=0; i<2; i++){
+      std::vector<cv::Mat> sources;
+      sources.push_back(image);
+      std::vector<cv::linemod::Match> matches;
+      std::vector<std::string> class_ids;
+      std::vector<cv::Mat> dummy;
 
-    if (!matches.empty()){
+      detector->match(sources, (float)threshold, matches, class_ids, dummy);
+
+      if (matches.size() <= 0)
+        continue;
+
       cv::linemod::Match m = matches[0];
       const std::vector<cv::linemod::Template>& templates = detector->getTemplates(m.class_id, m.template_id);
+      drawResponse(templates, display, cv::Point(m.x, m.y), detector->getT(0));
 
-      if(debug_view){
-	drawResponse(templates, display, cv::Point(m.x, m.y), detector->getT(0));
-	cv::imshow("display", display);
-	cv::waitKey(2);
-      }
-
-      std::vector<linemod_msgs::Scored2DBox> boxes;
       linemod_msgs::Scored2DBox box;
       std::string name = m.class_id.c_str();
       box.label = name;
@@ -131,12 +133,21 @@ void callback(const sensor_msgs::ImageConstPtr &rgb_image){
       box.score = m.similarity;
       boxes.push_back(box);
 
-      linemod_msgs::Scored2DBoxArray boxes_msg;
-      boxes_msg.header = header;
-      boxes_msg.boxes = boxes;
-      box_pub_.publish(boxes_msg);
+      cv::Point offset(0, 30);
+      cv::rectangle(image,
+                    cv::Point(m.x + offset.x, m.y + offset.y),
+                    cv::Point(m.x + templates[0].width - offset.x, 
+                              m.y + templates[0].height - offset.y),
+                    cv::Scalar(0,0,0), -1, CV_AA);
     }
+
+    linemod_msgs::Scored2DBoxArray boxes_msg;
+    boxes_msg.header = header;
+    boxes_msg.boxes = boxes;
+    box_pub_.publish(boxes_msg);
   }
+
+  img_pub_.publish(cv_bridge::CvImage(header, sensor_msgs::image_encodings::BGR8, display).toImageMsg());
 }
 
 int main(int argc, char** argv){
@@ -149,23 +160,20 @@ int main(int argc, char** argv){
   nh.getParam("threshold", threshold);
   nh.getParam("match_num", match_num);
   nh.getParam("debug_view", debug_view);
-  nh.getParam("l_top_x", l_top_x);
-  nh.getParam("l_top_y", l_top_y);
-  nh.getParam("r_buttom_x", r_buttom_x);
-  nh.getParam("r_buttom_y", r_buttom_y);
-
-  cv::namedWindow("mask", CV_WINDOW_NORMAL);
-  cv::resizeWindow("mask", 640, 480);
-  if(debug_view){
-    cv::namedWindow("display", CV_WINDOW_NORMAL);
-    cv::resizeWindow("display", 640, 480);
-  }
+  nh.getParam("l_top_x", l_top_x[0]);
+  nh.getParam("l_top_y", l_top_y[0]);
+  nh.getParam("r_buttom_x", r_buttom_x[0]);
+  nh.getParam("r_buttom_y", r_buttom_y[0]);
+  nh.getParam("l_top_x2", l_top_x[1]);
+  nh.getParam("l_top_y2", l_top_y[1]);
+  nh.getParam("r_buttom_x2", r_buttom_x[1]);
+  nh.getParam("r_buttom_y2", r_buttom_y[1]);
 
   ros::Subscriber img_sub_;
   img_sub_ = nh.subscribe("input",1, callback);
   ros::ServiceServer online_linemod_server = nh.advertiseService("create_frag", &onlineMatching);
   box_pub_ = nh.advertise<linemod_msgs::Scored2DBoxArray>("ategi_out", 1);
-
+  img_pub_ = nh.advertise<sensor_msgs::Image>("ategi_image", 1);
   ros::spin();
   return 0;
 }
