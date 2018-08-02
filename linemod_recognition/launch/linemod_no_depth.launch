@@ -1,15 +1,19 @@
 <launch>
+  <!-- <arg name="input" default="/camera/color/image_raw" /> -->
   <arg name="input" default="/stereo/left/image_rect_color" />
   <arg name="debug" default="false" />
   <arg name="threshold" default="80" /> 
-  <arg name="match_num" default="5" />
+  <arg name="match_num" default="4" />
 
   <node name="linemod_no_depth" 
 	pkg="linemod_recognition" type="linemod_no_depth" 
 	output="screen" >
     <rosparam subst_value="true">
+      <!-- pie: $(find linemod_recognition)/templates/pie_realsense.yml -->
+      <!-- caffelate : $(find linemod_recognition)/templates/caffelatte_realsense.yml -->
+      <!-- juice : $(find linemod_recognition)/templates/juice_realsense4.yml -->
       pie: $(find linemod_recognition)/templates/pie4.yml
-      caffelate : $(find linemod_recognition)/templates/caffe_test.yml
+      caffelate : $(find linemod_recognition)/templates/caffelatte3.yml
       juice : $(find linemod_recognition)/templates/juice.yml
       threshold: $(arg threshold)
       match_num: $(arg match_num)
