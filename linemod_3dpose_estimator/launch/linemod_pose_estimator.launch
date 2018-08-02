@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(linemod_3dpose_estimator)/launch/linemod.launch" />
+  <include file="$(linemod_3dpose_estimator)/launch/viewpoint_planner.launch" />
+</launch>
