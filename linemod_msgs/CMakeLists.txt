@@ -13,6 +13,7 @@ add_message_files(
   FILES
   Scored2DBox.msg
   Scored2DBoxArray.msg
+  Scored2DBoxMultiItemArray.msg
   )
 
 generate_messages(DEPENDENCIES std_msgs sensor_msgs geometry_msgs)
