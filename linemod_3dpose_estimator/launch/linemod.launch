@@ -9,11 +9,13 @@
   <arg name="scale_change" default="4381" />
   <arg name="roi_x" default="250" />
   <arg name="roi_y" default="250" />  
+  <arg name="filename" default="linemod_template" />
+  <arg name="matching_threshold" default="80" />
 
-  <arg name="rgb_image" default="/camera/rgb/image_raw">
-  <arg name="depth_image" default="/camera/depth/image_raw">
-  <arg name="rgb_camera_info" default="/camera/rgb/camera_info">
-  <arg name="depth_camera_info" default="/camera/depth/camera_info">
+  <arg name="rgb_image" default="/camera/rgb/image_raw" />
+  <arg name="depth_image" default="/camera/depth/image_raw" />
+  <arg name="rgb_camera_info" default="/camera/rgb/camera_info" />
+  <arg name="depth_camera_info" default="/camera/depth/camera_info" />
 
   <node name="linemod"
         pkg="linemod_3dpose_estimator"
@@ -30,12 +32,13 @@
       scale_change : $(arg scale_change)
       roi_x : $(arg roi_x)
       roi_y : $(arg roi_y)
+      filename : $(arg filename)
+      matching_threshold : $(arg matching_threshold)
     </rosparam>
 
     <remap from="~rgb_image" to="$(arg rgb_image)" />
     <remap from="~depth_image" to="$(arg depth_image)" />
     <remap from="~rgb_camera_info" to="$(arg rgb_camera_info)" />  
     <remap from="~depth_camera_info" to="$(arg depth_camera_info)" />  
-
   </node>
 </launch>
