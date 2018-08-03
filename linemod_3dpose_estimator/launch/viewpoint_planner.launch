@@ -1,11 +1,15 @@
 <launch>
   <arg name="filename" default="hemisphere_icosahedron.csv" />
+  <arg name="initial_dist" default="0.7" />
+  <arg name="initial_z" default="2.0" />
 
   <node name="viewpoint_planner"
         pkg="linemod_3dpose_estimator" type="viewpoint_planner"
         output="screen">
     <rosparam subst_value="true">
-      filename : $(find linemod_pose_estimator)/"data/$(arg filename)"
+      filename : $(find linemod_3dpose_estimator)/data/$(arg filename)
+      initial_dist : $(arg initial_dist)
+      initial_z : $(arg initial_z)
     </rosparam>
   </node>
 </launch>
