@@ -46,6 +46,7 @@ float initial_dist;
 int scale_change;
 int roi_x;
 int roi_y;
+const int end_index = 4381;
 
 class Mouse{
 public:
@@ -78,6 +79,7 @@ private:
     static int m_y;
     static int m_flag;
 };
+
 int Mouse::m_event;
 int Mouse::m_x;
 int Mouse::m_y;
@@ -122,83 +124,7 @@ void drawResponse(const std::vector<cv::linemod::Template>& templates,
     }
 }
 
-
-void updateCreateTemplateCb(const std_msgs::Int16 msg){
-    pose_flag = msg.data;
-}
-
-void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
-              const sensor_msgs::Image::ConstPtr& depth_image,
-              const sensor_msgs::CameraInfo::ConstPtr& rgb_camera_info,
-              const sensor_msgs::CameraInfo::ConstPtr& depth_camera_info){
-    bool show_match_result = true;
-    cv::Size roi_size(roi_x, roi_y);
-    int num_modalities = (int)detector->getModalities().size();
-    cv_bridge::CvImagePtr cv_rgb = 
-        cv_bridge::toCvCopy(rgb_image,sensor_msgs::image_encodings::BGR8);
-    cv::Mat color = cv_rgb->image;
-
-    // todo args
-    cv::Mat depth;
-    if(depth_use){
-        cv_bridge::CvImagePtr cv_depth = 
-            cv_bridge::toCvCopy(depth_image, sensor_msgs::image_encodings::TYPE_32FC1);
-        cv::Mat depth_m =  cv_depth->image;
-        cv::imshow("depth_m", depth_m);
-        depth_m.convertTo(depth, CV_16UC1, 1000.0);
-        double focal_length = depth_camera_info->K[0];
-    }
-
-    std::vector<cv::Mat> sources;
-    sources.push_back(color);
-
-    if(depth_use)
-        sources.push_back(depth/1000.0);
-
-    cv::Mat display = color.clone();
-
-    cv::Point mouse(Mouse::x(), Mouse::y());
-    int event = Mouse::event();
-    int mouse_event_flag = Mouse::mouse_flag();
-    cv::Point roi_offset(roi_size.width / 2, roi_size.height / 2);
-    cv::Point pt1 = mouse - roi_offset;
-    cv::Point pt2 = mouse + roi_offset;
-    std::vector<CvPoint> chain(4);
-    chain[0] = pt1;
-    chain[1] = cv::Point(pt2.x, pt1.y);
-    chain[2] = pt2;
-    chain[3] = cv::Point(pt1.x, pt2.y);
-
-    pose_flag = 0;
-
-    int classes_index = num_classes-TF_OFFSET;
-    // printf("%d\n", classes_index);
-
-    if((classes_index) % scale_change == 0 && classes_index != 0){
-        printf("chage camera distance\n");
-        cv::waitKey(0);
-        pose_flag = 1;
-    }
-
-    cv::Mat canny_img;
-    cv::Mat gray_conf = color.clone();
-    cv::cvtColor(color, gray_conf , CV_BGR2GRAY);
-    cv::Canny(gray_conf, canny_img, canny_val1, canny_val2);
-    cv::imshow("canny_img", canny_img);
-
-    if (mouse_event_flag == CV_EVENT_FLAG_RBUTTON) {
-        // if(event == CV_EVENT_RBUTTONDOWN){
-        cv::Mat mask;
-        cv::Mat gray = color.clone();
-        cv::cvtColor(color, gray , CV_BGR2GRAY);
-        if(canny){
-            cv::Canny(gray, mask, canny_val1, canny_val2);
-        } else if(otsu){
-            cv::threshold(gray, mask, 0, 255, CV_THRESH_BINARY | cv::THRESH_OTSU);
-        } else {
-            cv::threshold(gray, mask, 100, 255, CV_THRESH_BINARY);
-        }
-        // crop
+bool cropImage(cv::Mat &mask, cv::Size &roi_size){
         cv::rectangle(mask,
                       cv::Point(0,0),
                       cv::Point(mask.cols,Mouse::y()-roi_size.height/2),
@@ -223,9 +149,89 @@ void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
                       cv::Scalar(0,0,0),
                       -1,
                       CV_AA);
+        return true;
+}
+
+void updateCreateTemplateCb(const std_msgs::Int16 msg){
+    pose_flag = msg.data;
+}
+
+void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
+              const sensor_msgs::Image::ConstPtr& depth_image,
+              const sensor_msgs::CameraInfo::ConstPtr& rgb_camera_info,
+              const sensor_msgs::CameraInfo::ConstPtr& depth_camera_info){
+    bool show_match_result = true;
+    cv::Size roi_size(roi_x, roi_y);
+    int num_modalities = (int)detector->getModalities().size();
+    cv_bridge::CvImagePtr cv_rgb = 
+        cv_bridge::toCvCopy(rgb_image,sensor_msgs::image_encodings::BGR8);
+    cv::Mat color = cv_rgb->image;
+
+    std::vector<cv::Mat> sources;
+    sources.push_back(color);
+
+    cv::Mat depth;
+    if(depth_use){
+        cv_bridge::CvImagePtr cv_depth = 
+            cv_bridge::toCvCopy(depth_image, sensor_msgs::image_encodings::TYPE_32FC1);
+        cv::Mat depth_m =  cv_depth->image;
+        cv::imshow("depth_m", depth_m);
+        depth_m.convertTo(depth, CV_16UC1, 1000.0);
+        double focal_length = depth_camera_info->K[0];
+        sources.push_back(depth/1000.0);
+    }
+
+    cv::Mat display = color.clone();
+
+    cv::Point mouse(Mouse::x(), Mouse::y());
+    int event = Mouse::event();
+    int mouse_event_flag = Mouse::mouse_flag();
+
+    cv::Point roi_offset(roi_size.width / 2, roi_size.height / 2);
+    cv::Point pt1 = mouse - roi_offset;
+    cv::Point pt2 = mouse + roi_offset;
+    std::vector<CvPoint> chain(4);
+    chain[0] = pt1;
+    chain[1] = cv::Point(pt2.x, pt1.y);
+    chain[2] = pt2;
+    chain[3] = cv::Point(pt1.x, pt2.y);
+
+    pose_flag = 0;
+
+    int classes_index = num_classes-TF_OFFSET;
+
+    if((classes_index) % scale_change == 0 && classes_index != 0){
+        printf("chage camera distance\n");
+        cv::waitKey(0);
+        pose_flag = 1;
+    }
+
+    cv::Mat canny_img;
+    cv::Mat gray_conf = color.clone();
+    cv::cvtColor(color, gray_conf , CV_BGR2GRAY);
+    cv::Canny(gray_conf, canny_img, canny_val1, canny_val2);
+    cv::imshow("canny_img", canny_img);
+
+    if (mouse_event_flag == CV_EVENT_FLAG_RBUTTON) {
+        // if(event == CV_EVENT_RBUTTONDOWN){
+        cv::Mat mask;
+        cv::Mat gray = color.clone();
+        cv::cvtColor(color, gray , CV_BGR2GRAY);
+
+        if(canny){
+            cv::Canny(gray, mask, canny_val1, canny_val2);
+        } else if(otsu){
+            cv::threshold(gray, mask, 0, 255, CV_THRESH_BINARY | cv::THRESH_OTSU);
+        } else {
+            cv::threshold(gray, mask, 100, 255, CV_THRESH_BINARY);
+        }
+
+        // crop
+        cropImage(mask, roi_size);
         cv::imshow("mask", mask);
 
         geometry_msgs::TransformStamped transform_stamped;
+
         try{
             transform_stamped = tf_buffer->lookupTransform("linemod_camera",
                                                            "linemod_template",
@@ -238,10 +244,6 @@ void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
         double qy = transform_stamped.transform.rotation.y;
         double qz = transform_stamped.transform.rotation.z;
         double qw = transform_stamped.transform.rotation.w;
-        // std::cout << qx << ", "
-        //       << qy << ", "
-        //       << qz << ", "
-        //       << qw << std::endl;
 
         std::string class_id = cv::format("%d,%lf,%lf,%lf,%lf",
                                           classes_index,
@@ -251,12 +253,8 @@ void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
                                           qw);
         cv::Rect bb;
         int template_id;
-        if(num_classes >= 5){
+        if(num_classes >= 5)
             template_id = detector->addTemplate(sources, class_id, mask, &bb);
-            if (template_id != -1){
-                // printf("Add template class %d\n", classes_index);
-            }
-        }
 
         flag.data = pose_flag;
         flag_pub.publish(flag);
@@ -297,11 +295,11 @@ void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
     cv::FileStorage fs;
     char key = (char)cvWaitKey(10);
 
-    if(classes_index == 4381)
+    if(classes_index == end_index)
         writeLinemod(detector, filename);
 
     printf("-----------------------------------------------------\n");
-    cv::waitKey(500);
+    cv::waitKey(50);
 }
 
 
