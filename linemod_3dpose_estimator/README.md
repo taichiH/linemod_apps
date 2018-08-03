@@ -1,4 +1,4 @@
-linemod_3dpose_estimator demo
+# linemod_3dpose_estimator demo
 
 ```
 roslaunch camera_sim_gazebo camera_sim.launch

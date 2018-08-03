@@ -36,8 +36,9 @@ ros::Publisher pose_flag_pub;
 std_msgs::Int16 pose_flag;
 
 float dist_step = 0;
-float initial_dist;
-float initial_z;
+float initial_dist = 0.7;
+float initial_z = 2.0;
+bool debug = false;
 
 int index_ = 0;
 const int tf_offset = 5;
@@ -122,7 +123,8 @@ void updatePoseCb(const std_msgs::Int16 msg){
     z = initial_z;
   
     float camera_position_z = z + initial_dist + dist_step;
-    std::cout << "camera_distance: " << camera_position_z << std::endl;
+    if(debug)
+        std::cout << "camera_distance: " << camera_position_z << std::endl;
     pose_flag.data = msg.data;
 
     geometry_msgs::Quaternion quaternion;
@@ -180,9 +182,10 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "viewpoint_planner");
     ros::NodeHandle nh("~");
 
-    nh.getParam("filename", filename);
+    // nh.getParam("filename", filename);
     nh.getParam("initial_dist", initial_dist);
     nh.getParam("initial_z", initial_z);
+    nh.getParam("debug", debug);
 
     ros::ServiceClient client =
         nh.serviceClient<gazebo_msgs::SetModelState>("/gazebo/set_model_state");
