@@ -38,33 +38,36 @@ ros::Publisher pose_flag_pub;
 std_msgs::Int16 pose_flag;
 float dist_step = 0;
 
-float initial_dist;
-float initial_z;
+float initial_dist = 0.7;
+float initial_z = 2.0;
+bool debug = false;
 
 std::vector<std::string> split(std::string& input, char delimiter){
     std::istringstream stream(input);
     std::string field;
     std::vector<std::string> result;
-    while (getline(stream, field, delimiter)) {
+    while (std::getline(stream, field, delimiter)) {
         result.push_back(field);
     }
     return result;
 }
 
 void updatePoseCb(const std_msgs::Int16 msg){
-
     ros::ServiceClient client = (ros::ServiceClient)*client_ptr;
     ros::ServiceClient get_model_state = (ros::ServiceClient)*get_model_state_ptr;
 
-    getline(ifs, line);
+    std::getline(ifs, line);
     std::vector<std::string> strvec = split(line, ' ');
 
     std::vector<double> vec((int)strvec.size());
-    std::cout << "---------------------------------" << std::endl << std::endl;;
+    if(debug)
+        std::cout << "---------------------------------" << std::endl << std::endl;;
     for (int i=0; i<strvec.size();i++){
         try{
+
             vec[i] = std::stod(strvec[i]);
-            std::cout << vec[i] << ", " << i <<  std::endl;
+            if(debug)
+                std::cout << vec[i] << ", " << i <<  std::endl;
         } catch(std::invalid_argument e) {
             std::cout << "error! check csv file" << std::endl;
         }
@@ -85,7 +88,8 @@ void updatePoseCb(const std_msgs::Int16 msg){
     z = initial_z;
   
     float camera_position_z = z + initial_dist + dist_step;
-    std::cout << "camera_distance: " << camera_position_z << std::endl;
+    if(debug)
+        std::cout << "camera_distance: " << camera_position_z << std::endl;
     pose_flag.data = msg.data;
 
     geometry_msgs::Quaternion quaternion;
@@ -143,7 +147,7 @@ void updatePoseCb(const std_msgs::Int16 msg){
     kinect_twist.angular.x = 0.0;
     kinect_twist.angular.y = 0.0;
     kinect_twist.angular.z = 0.0;
-    kinect_modelstate.model_name = (std::string) "higa_kinect";
+    kinect_modelstate.model_name = (std::string) "camera_sim";
     kinect_modelstate.reference_frame = (std::string) "world";
     kinect_modelstate.pose = kinect_pose;
     kinect_modelstate.twist = kinect_twist;
@@ -188,9 +192,10 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "viewpoint_planner");
     ros::NodeHandle nh("~");
 
-    nh.getParam("filename", filename);
+    // nh.getParam("filename", filename);
     nh.getParam("initial_dist", initial_dist);
     nh.getParam("initial_z", initial_z);
+    nh.getParam("debug", debug);
 
     ros::ServiceClient client =
         nh.serviceClient<gazebo_msgs::SetModelState>("/gazebo/set_model_state");
