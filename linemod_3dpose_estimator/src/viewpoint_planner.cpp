@@ -39,11 +39,14 @@ float dist_step = 0;
 float initial_dist;
 float initial_z;
 
+int index_ = 0;
+const int tf_offset = 5;
+
 std::vector<std::string> split(std::string& input, char delimiter){
     std::istringstream stream(input);
     std::string field;
     std::vector<std::string> result;
-    while (getline(stream, field, delimiter)) {
+    while (std::getline(stream, field, delimiter)) {
         result.push_back(field);
     }
     return result;
@@ -88,18 +91,23 @@ bool setModel(const std::string &model_name,
 void updatePoseCb(const std_msgs::Int16 msg){
     ros::ServiceClient client = (ros::ServiceClient)*client_ptr;
     ros::ServiceClient get_model_state = (ros::ServiceClient)*get_model_state_ptr;
-
-    getline(ifs, line);
-    std::vector<std::string> strvec = split(line, ' ');
-
-    std::vector<double> vec((int)strvec.size());
     std::cout << "---------------------------------" << std::endl << std::endl;;
-    for (int i=0; i<strvec.size();i++){
-        try{
-            vec[i] = std::stod(strvec[i]);
-            std::cout << vec[i] << ", " << i <<  std::endl;
-        } catch(std::invalid_argument e) {
-            std::cout << "error! check csv file" << std::endl;
+    std::vector<double> vec;
+    if(index_ > tf_offset){
+        std::getline(ifs, line);
+        std::vector<std::string> strvec = split(line, ' ');
+        for (int i=0; i<strvec.size();i++){
+            try{
+                vec.push_back(std::stod(strvec[i]));
+                std::cout << vec.at(i) << ", " << i <<  std::endl;
+            } catch(std::invalid_argument e) {
+                std::cout << "error! check csv file" << std::endl;
+            }
+        }
+    } else {
+        ROS_WARN("meaningless process to avoid tf error. todo: revise this.");
+        for(int i=0; i<6; i++){
+            vec.push_back(0);
         }
     }
 
@@ -107,8 +115,8 @@ void updatePoseCb(const std_msgs::Int16 msg){
         dist_step = dist_step + 0.1;
 
     double x, y, z, roll, pitch, yaw; 
-    pitch = vec[3]; // theta
-    yaw = vec[4]; // phi
+    pitch = vec.at(3); // theta
+    yaw = vec.at(4); // phi
     x = 0;
     y = 0;
     z = initial_z;
@@ -165,6 +173,7 @@ void updatePoseCb(const std_msgs::Int16 msg){
         ros::Duration(0.001).sleep();
     }
     pose_flag_pub.publish(pose_flag);
+    index_++;
 }
 
 int main(int argc, char **argv){
@@ -185,7 +194,6 @@ int main(int argc, char **argv){
         nh.subscribe("/viewpoint_planner/createFrag", 1000, updatePoseCb);
     pose_flag_pub =
         nh.advertise<std_msgs::Int16>("/viewpoint_planner/poseFrag",1000);
-
     ros::spin();
     return 0;
 }
