@@ -299,7 +299,7 @@ void callback(const sensor_msgs::Image::ConstPtr& rgb_image,
         writeLinemod(detector, filename);
 
     printf("-----------------------------------------------------\n");
-    cv::waitKey(500);
+    cv::waitKey(50);
 }
 
 
