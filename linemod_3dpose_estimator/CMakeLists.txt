@@ -21,15 +21,10 @@ include_directories(${OPENCV_INCLUDE_DIRS})
 link_directories(${OPENCV_LIBRARY_DIRS})
 
 catkin_package(
- INCLUDE_DIRS include
+ INCLUDE_DIRS
  LIBRARIES linemod_3dpose_estimator
  CATKIN_DEPENDS roscpp rospy std_msgs message_runtime
  DEPENDS system_lib
-)
-
-include_directories(
-include
-  ${catkin_INCLUDE_DIRS}
 )
 
 add_executable(viewpoint_planner src/viewpoint_planner.cpp)
