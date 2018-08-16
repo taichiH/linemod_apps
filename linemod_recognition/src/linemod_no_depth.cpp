@@ -73,7 +73,7 @@ int updateDeg(cv::linemod::Match m){
     first = last;
   }
   deg = std::stoi(parts_result);
-  return deg;  
+  return deg;
 }
 
 void callback(const sensor_msgs::ImageConstPtr &rgb_image){
