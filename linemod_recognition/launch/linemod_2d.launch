@@ -1,0 +1,19 @@
+<launch>
+  <arg name="input" default="/camera/color/image_raw" />
+  <arg name="rotation" default="180" />
+  <arg name="roi_x" default="200" />
+  <arg name="roi_y" default="100" />
+  <arg name="template_name" default="hoge.yml" />
+
+  <node name="linemod_2d" 
+	pkg="linemod_recognition" type="linemod_2d" 
+	output="screen" >
+    <remap from="~input" to="$(arg input)" />
+    <rosparam subst_value="true">
+      rotation: $(arg rotation)
+      roi_x: $(arg roi_x)
+      roi_y: $(arg roi_y)
+      filename: $(find linemod_recognition)/$(arg template_name)
+    </rosparam>
+  </node>
+</launch>
