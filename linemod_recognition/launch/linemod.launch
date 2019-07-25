@@ -1,0 +1,10 @@
+<launch>
+  <arg name="input" default="/image_publisher/output" />
+
+  <node name="linemod"
+        pkg="linemod_recognition" type="linemod"
+        output="screen" >
+    <remap from="~input" to="$(arg input)" />
+  </node>
+
+</launch>
